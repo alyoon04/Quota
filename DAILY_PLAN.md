@@ -7,16 +7,19 @@
 
 ---
 
-## Day 1: Rate Limiter Tests
+## Day 1: Rate Limiter Tests ✅
 **Goal**: Test the most critical piece of the app — the rate limiting middleware.
 
-- [ ] Add test fixtures that create a plan + API key in the test DB
-- [ ] Test that a valid API key returns 200 with correct `X-RateLimit-*` headers
-- [ ] Test that exceeding RPM returns 429 with `Retry-After` header
-- [ ] Test that a missing/invalid `X-API-Key` header returns 401
-- [ ] Test that an inactive key is rejected
+- [x] Add test fixtures that create a plan + API key in the test DB
+- [x] Test that a valid API key returns 200 with correct `X-RateLimit-*` headers
+- [x] Test that exceeding RPM returns 429 with `Retry-After` header
+- [x] Test that a missing/invalid `X-API-Key` header returns 401
+- [x] Test that an inactive key is rejected
+- [x] Bonus: test that X-RateLimit-Remaining decrements correctly
 
 **Files**: `backend/tests/test_rate_limiter.py`, `backend/tests/conftest.py`
+
+**Notes**: Tests require Docker services running (`docker compose up`). Local Homebrew PostgreSQL must be stopped to avoid port 5432 conflict. Rate limiter tests use `loop_scope="session"` to share the event loop (needed for module-level `redis_client`).
 
 ---
 
