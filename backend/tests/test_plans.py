@@ -1,5 +1,9 @@
 import uuid
 
+import pytest
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 
 async def test_plan_crud(client, admin_headers):
     plan_name = f"test-plan-{uuid.uuid4().hex[:8]}"

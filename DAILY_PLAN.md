@@ -23,16 +23,18 @@
 
 ---
 
-## Day 2: API Key Endpoint Tests
+## Day 2: API Key Endpoint Tests ✅
 **Goal**: Full test coverage for API key creation and listing.
 
-- [ ] Test creating an API key returns plaintext key (shown once)
-- [ ] Test listing API keys returns metadata (no plaintext)
-- [ ] Test creating a key with an invalid plan_id returns 404
-- [ ] Test creating a key without auth returns 401
-- [ ] Test `last_used_at` updates after a rate-limited request
+- [x] Test creating an API key returns plaintext key (shown once)
+- [x] Test listing API keys returns metadata (no plaintext)
+- [x] Test creating a key with an invalid plan_id returns 404
+- [x] Test creating a key without auth returns 401
+- [x] Test `last_used_at` updates after a rate-limited request
 
 **Files**: `backend/tests/test_api_keys.py`
+
+**Notes**: All test files now use `pytestmark = pytest.mark.asyncio(loop_scope="session")` to share a single event loop — required because the global `redis_client` singleton binds connections to whichever loop first uses it.
 
 ---
 
