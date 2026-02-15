@@ -38,16 +38,18 @@
 
 ---
 
-## Day 3: Complete Plan CRUD (Backend)
+## Day 3: Complete Plan CRUD (Backend) ✅
 **Goal**: Add update and delete endpoints for plans.
 
-- [ ] `PATCH /admin/plans/{plan_id}` — update name and/or default_rpm
-- [ ] `DELETE /admin/plans/{plan_id}` — delete a plan (reject if keys still reference it)
-- [ ] `GET /admin/plans/{plan_id}` — get a single plan
-- [ ] Add tests for each new endpoint
-- [ ] Update schemas.py with PlanUpdate model
+- [x] `PATCH /admin/plans/{plan_id}` — update name and/or default_rpm
+- [x] `DELETE /admin/plans/{plan_id}` — delete a plan (reject if keys still reference it)
+- [x] `GET /admin/plans/{plan_id}` — get a single plan
+- [x] Add tests for each new endpoint
+- [x] Update schemas.py with PlanUpdate model
 
 **Files**: `backend/app/routers/admin.py`, `backend/app/schemas.py`, `backend/tests/test_plans.py`
+
+**Notes**: 9 new plan tests added (get single, get 404, update name, update rpm, update duplicate name 409, update 404, delete success, delete with keys 409, delete 404). Total: 22 tests passing.
 
 ---
 

@@ -9,6 +9,11 @@ class PlanCreate(BaseModel):
     default_rpm: int
 
 
+class PlanUpdate(BaseModel):
+    name: str | None = None
+    default_rpm: int | None = None
+
+
 class PlanResponse(BaseModel):
     id: uuid.UUID
     name: str

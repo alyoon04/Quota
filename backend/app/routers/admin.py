@@ -16,6 +16,7 @@ from app.schemas import (
     ApiKeyResponse,
     PlanCreate,
     PlanResponse,
+    PlanUpdate,
 )
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
@@ -43,6 +44,52 @@ async def create_plan(body: PlanCreate, db: AsyncSession = Depends(get_db)):
 async def list_plans(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Plan).order_by(Plan.created_at))
     return result.scalars().all()
+
+
+@router.get("/plans/{plan_id}", response_model=PlanResponse)
+async def get_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    plan = await db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
+
+
+@router.patch("/plans/{plan_id}", response_model=PlanResponse)
+async def update_plan(
+    plan_id: uuid.UUID, body: PlanUpdate, db: AsyncSession = Depends(get_db)
+):
+    plan = await db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    if body.name is not None:
+        plan.name = body.name
+    if body.default_rpm is not None:
+        plan.default_rpm = body.default_rpm
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Plan name already exists")
+    await db.refresh(plan)
+    return plan
+
+
+@router.delete("/plans/{plan_id}", status_code=204)
+async def delete_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    plan = await db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    # Reject if API keys still reference this plan
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.plan_id == plan_id).limit(1)
+    )
+    if result.scalars().first():
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete plan with existing API keys",
+        )
+    await db.delete(plan)
+    await db.commit()
 
 
 @router.post("/api-keys", response_model=ApiKeyCreatedResponse, status_code=201)
