@@ -28,6 +28,10 @@ class ApiKeyCreate(BaseModel):
     plan_id: uuid.UUID
 
 
+class ApiKeyUpdate(BaseModel):
+    is_active: bool
+
+
 class ApiKeyResponse(BaseModel):
     id: uuid.UUID
     label: str

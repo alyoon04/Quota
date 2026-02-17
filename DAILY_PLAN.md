@@ -53,15 +53,17 @@
 
 ---
 
-## Day 4: API Key Lifecycle (Backend)
+## Day 4: API Key Lifecycle (Backend) ✅
 **Goal**: Add deactivate/activate and delete for API keys.
 
-- [ ] `PATCH /admin/api-keys/{key_id}` — toggle `is_active`
-- [ ] `DELETE /admin/api-keys/{key_id}` — delete a key
-- [ ] Add tests for deactivate, reactivate, and delete
-- [ ] Verify deactivated keys get rejected by rate limiter
+- [x] `PATCH /admin/api-keys/{key_id}` — toggle `is_active`
+- [x] `DELETE /admin/api-keys/{key_id}` — delete a key
+- [x] Add tests for deactivate, reactivate, and delete
+- [x] Verify deactivated keys get rejected by rate limiter
 
 **Files**: `backend/app/routers/admin.py`, `backend/app/schemas.py`, `backend/tests/test_api_keys.py`
+
+**Notes**: 7 new API key lifecycle tests added (deactivate, reactivate, deactivated key rejected by rate limiter, update 404, delete, delete 404, plus existing). Total: 28 tests passing.
 
 ---
 

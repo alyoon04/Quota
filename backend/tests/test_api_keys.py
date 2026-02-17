@@ -65,6 +65,93 @@ async def test_create_key_without_auth_returns_401(client):
     assert resp.status_code == 403
 
 
+async def test_deactivate_api_key(client, admin_headers, api_key):
+    """PATCH with is_active=false should deactivate the key."""
+    resp = await client.patch(
+        f"/admin/api-keys/{api_key['id']}",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_active"] is False
+    assert data["id"] == api_key["id"]
+
+
+async def test_reactivate_api_key(client, admin_headers, api_key):
+    """Deactivating then reactivating a key should restore is_active=true."""
+    # Deactivate
+    await client.patch(
+        f"/admin/api-keys/{api_key['id']}",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    # Reactivate
+    resp = await client.patch(
+        f"/admin/api-keys/{api_key['id']}",
+        json={"is_active": True},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_active"] is True
+
+
+async def test_deactivated_key_rejected_by_rate_limiter(client, admin_headers, api_key):
+    """A deactivated key should be rejected by the rate limiter."""
+    # Deactivate the key
+    resp = await client.patch(
+        f"/admin/api-keys/{api_key['id']}",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 200
+
+    # Try to use the deactivated key — rate limiter treats it as invalid (401)
+    resp = await client.get(
+        "/v1/hello",
+        headers={"X-API-Key": api_key["plaintext_key"]},
+    )
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Invalid or inactive API key"
+
+
+async def test_update_api_key_not_found(client, admin_headers):
+    """PATCH on a non-existent key should return 404."""
+    fake_id = str(uuid.uuid4())
+    resp = await client.patch(
+        f"/admin/api-keys/{fake_id}",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "API key not found"
+
+
+async def test_delete_api_key(client, admin_headers, api_key):
+    """DELETE should remove the key and return 204."""
+    resp = await client.delete(
+        f"/admin/api-keys/{api_key['id']}",
+        headers=admin_headers,
+    )
+    assert resp.status_code == 204
+
+    # Verify it's gone
+    resp = await client.get("/admin/api-keys", headers=admin_headers)
+    ids = [k["id"] for k in resp.json()]
+    assert api_key["id"] not in ids
+
+
+async def test_delete_api_key_not_found(client, admin_headers):
+    """DELETE on a non-existent key should return 404."""
+    fake_id = str(uuid.uuid4())
+    resp = await client.delete(
+        f"/admin/api-keys/{fake_id}",
+        headers=admin_headers,
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "API key not found"
+
+
 async def test_last_used_at_updates_after_request(client, admin_headers, api_key):
     """After a rate-limited request, last_used_at should be set on the key."""
     # Confirm last_used_at starts as None

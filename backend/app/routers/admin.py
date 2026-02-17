@@ -14,6 +14,7 @@ from app.schemas import (
     ApiKeyCreate,
     ApiKeyCreatedResponse,
     ApiKeyResponse,
+    ApiKeyUpdate,
     PlanCreate,
     PlanResponse,
     PlanUpdate,
@@ -129,3 +130,25 @@ async def create_api_key(body: ApiKeyCreate, db: AsyncSession = Depends(get_db))
 async def list_api_keys(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ApiKey).order_by(ApiKey.created_at))
     return result.scalars().all()
+
+
+@router.patch("/api-keys/{key_id}", response_model=ApiKeyResponse)
+async def update_api_key(
+    key_id: uuid.UUID, body: ApiKeyUpdate, db: AsyncSession = Depends(get_db)
+):
+    key = await db.get(ApiKey, key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    key.is_active = body.is_active
+    await db.commit()
+    await db.refresh(key)
+    return key
+
+
+@router.delete("/api-keys/{key_id}", status_code=204)
+async def delete_api_key(key_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    key = await db.get(ApiKey, key_id)
+    if not key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    await db.delete(key)
+    await db.commit()
