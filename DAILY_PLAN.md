@@ -67,13 +67,13 @@
 
 ---
 
-## Day 5: Database Indexes + Admin Auth Hardening
+## Day 5: Database Indexes + Admin Auth Hardening ✅
 **Goal**: Performance and security quick wins.
 
-- [ ] Add Alembic migration with indexes on `api_keys.key_hash` and `api_keys.plan_id`
-- [ ] Move hardcoded `dev-admin-token` out of frontend — read from env var at build time
-- [ ] Add rate limiting on `/admin/*` endpoints (e.g. 60 RPM per IP)
-- [ ] Add tests for admin auth failures (missing token, wrong token)
+- [x] Add Alembic migration with indexes on `api_keys.key_hash` and `api_keys.plan_id`
+- [x] Move hardcoded `dev-admin-token` out of frontend — read from env var at build time
+- [x] Add rate limiting on `/admin/*` endpoints (e.g. 60 RPM per IP)
+- [x] Add tests for admin auth failures (missing token, wrong token)
 
 **Files**: `alembic/versions/0002_*.py`, `frontend/lib/api.js`, `backend/app/dependencies.py`
 

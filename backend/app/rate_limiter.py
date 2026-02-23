@@ -23,8 +23,14 @@ return count
 """
 
 
+ADMIN_RATE_LIMIT_RPM = 60
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/admin"):
+            return await self._admin_rate_limit(request, call_next)
+
         if not request.url.path.startswith("/v1"):
             return await call_next(request)
 
@@ -104,6 +110,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return 0
         _plan_cache[plan_id_str] = (plan.default_rpm, now)
         return plan.default_rpm
+
+    async def _admin_rate_limit(self, request: Request, call_next):
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        window = int(now) // 60
+        redis_key = f"admin_rl:{client_ip}:{window}"
+        window_reset = (window + 1) * 60
+
+        count = await redis_client.eval(RATE_LIMIT_SCRIPT, 1, redis_key, 60)
+
+        if count > ADMIN_RATE_LIMIT_RPM:
+            retry_after = window_reset - int(now)
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Admin rate limit exceeded"},
+                headers={"Retry-After": str(max(1, retry_after))},
+            )
+
+        return await call_next(request)
 
     async def _update_last_used(self, api_key_id_str: str):
         try:
