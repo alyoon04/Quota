@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +44,15 @@ async def create_plan(body: PlanCreate, db: AsyncSession = Depends(get_db)):
 @router.get("/plans", response_model=list[PlanResponse])
 async def list_plans(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Plan).order_by(Plan.created_at))
-    return result.scalars().all()
+    plans = result.scalars().all()
+    counts_result = await db.execute(
+        select(ApiKey.plan_id, func.count(ApiKey.id).label("cnt")).group_by(ApiKey.plan_id)
+    )
+    key_counts = {row.plan_id: row.cnt for row in counts_result}
+    return [
+        PlanResponse(id=p.id, name=p.name, default_rpm=p.default_rpm, created_at=p.created_at, key_count=key_counts.get(p.id, 0))
+        for p in plans
+    ]
 
 
 @router.get("/plans/{plan_id}", response_model=PlanResponse)
@@ -52,7 +60,11 @@ async def get_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     plan = await db.get(Plan, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return plan
+    count_result = await db.execute(
+        select(func.count(ApiKey.id)).where(ApiKey.plan_id == plan_id)
+    )
+    key_count = count_result.scalar() or 0
+    return PlanResponse(id=plan.id, name=plan.name, default_rpm=plan.default_rpm, created_at=plan.created_at, key_count=key_count)
 
 
 @router.patch("/plans/{plan_id}", response_model=PlanResponse)

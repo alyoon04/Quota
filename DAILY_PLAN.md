@@ -79,14 +79,14 @@
 
 ---
 
-## Day 6: Plans Page — Full CRUD in Dashboard
+## Day 6: Plans Page — Full CRUD in Dashboard ✅
 **Goal**: Make the plans page fully functional (edit + delete).
 
-- [ ] Add edit button that opens inline form to update name/RPM
-- [ ] Add delete button with confirmation dialog
-- [ ] Show key count per plan (to warn before delete)
-- [ ] Add loading states and error messages
-- [ ] Wire up to new PATCH/DELETE backend endpoints
+- [x] Add edit button that opens inline form to update name/RPM
+- [x] Add delete button with confirmation dialog
+- [x] Show key count per plan (to warn before delete)
+- [x] Add loading states and error messages
+- [x] Wire up to new PATCH/DELETE backend endpoints
 
 **Files**: `frontend/pages/plans.js`
 

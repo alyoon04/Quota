@@ -7,8 +7,17 @@ from sqlalchemy import update
 from app.database import AsyncSessionLocal
 from app.models import ApiKey
 from app.rate_limiter import _plan_cache
+from app.redis_client import redis_client
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+
+@pytest.fixture(autouse=True, scope="module")
+async def _reset_redis_pool():
+    """Disconnect all pooled Redis connections before this module runs.
+    Forces fresh connections bound to the current event loop, preventing
+    'Future attached to a different loop' errors from stale admin-path connections."""
+    await redis_client.connection_pool.disconnect()
 
 
 @pytest.fixture(autouse=True)

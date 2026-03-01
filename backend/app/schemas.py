@@ -19,6 +19,7 @@ class PlanResponse(BaseModel):
     name: str
     default_rpm: int
     created_at: datetime
+    key_count: int = 0
 
     model_config = {"from_attributes": True}
 

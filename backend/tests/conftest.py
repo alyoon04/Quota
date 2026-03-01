@@ -4,8 +4,15 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+from app.rate_limiter import redis_client
 
 ADMIN_TOKEN = "dev-admin-token"
+
+
+@pytest.fixture(autouse=True, scope="session")
+async def _warmup_redis():
+    """Ping Redis once at session start so the connection pool binds to the session event loop."""
+    await redis_client.ping()
 
 
 @pytest.fixture
