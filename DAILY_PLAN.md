@@ -92,14 +92,14 @@
 
 ---
 
-## Day 7: API Keys Page — Lifecycle in Dashboard
+## Day 7: API Keys Page — Lifecycle in Dashboard ✅
 **Goal**: Make the API keys page fully functional.
 
-- [ ] Add activate/deactivate toggle per key
-- [ ] Add delete button with confirmation
-- [ ] Add filtering by plan
-- [ ] Add loading states and error messages
-- [ ] Show `last_used_at` timestamp
+- [x] Add activate/deactivate toggle per key
+- [x] Add delete button with confirmation
+- [x] Add filtering by plan
+- [x] Add loading states and error messages
+- [x] Show `last_used_at` timestamp
 
 **Files**: `frontend/pages/api-keys.js`
 
