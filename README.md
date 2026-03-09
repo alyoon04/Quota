@@ -19,8 +19,35 @@ docker compose up --build
 
 Services:
 
-- Backend health check: http://localhost:8000/health
+- Backend API + Swagger docs: http://localhost:8000/docs
 - Admin dashboard: http://localhost:3000
+
+## Local dev (without Docker)
+
+**Prerequisites**: Python 3.12+, Node 20+, PostgreSQL 16, Redis 7
+
+```bash
+# 1. Start postgres and redis (e.g. via Homebrew)
+brew services start postgresql@16
+brew services start redis
+
+# 2. Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+export DATABASE_URL=postgresql+psycopg://app:app@localhost:5432/ratelimiter
+export REDIS_URL=redis://localhost:6379/0
+export ADMIN_API_TOKEN=dev-admin-token
+alembic upgrade head
+uvicorn app.main:app --reload
+
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 \
+NEXT_PUBLIC_ADMIN_TOKEN=dev-admin-token \
+npm run dev
+```
 
 ## Usage
 
@@ -62,20 +89,27 @@ Responses include rate limit headers: `X-RateLimit-Limit`, `X-RateLimit-Remainin
 | GET | `/v1/search` | Search placeholder |
 | POST | `/v1/export` | Export placeholder |
 
-### Admin (requires `Authorization: Bearer dev-admin-token`)
+### Admin (requires `Authorization: Bearer <token>`)
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/admin/stats` | Total plans, keys, requests today |
 | POST | `/admin/plans` | Create a plan |
-| GET | `/admin/plans` | List all plans |
+| GET | `/admin/plans` | List plans (`?skip=0&limit=100`) |
+| GET | `/admin/plans/{id}` | Get a single plan |
+| PATCH | `/admin/plans/{id}` | Update plan name/RPM |
+| DELETE | `/admin/plans/{id}` | Delete plan (blocked if keys exist) |
 | POST | `/admin/api-keys` | Create an API key |
-| GET | `/admin/api-keys` | List all API keys |
+| GET | `/admin/api-keys` | List keys (`?skip=0&limit=100`) |
+| PATCH | `/admin/api-keys/{id}` | Activate/deactivate a key |
+| DELETE | `/admin/api-keys/{id}` | Delete a key |
 
 ### Infrastructure
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check (no auth) |
+| GET | `/docs` | Swagger UI (interactive API explorer) |
 
 ## Project structure
 
@@ -88,11 +122,12 @@ backend/
     models.py           Plans + API keys tables
     schemas.py          Pydantic request/response models
     dependencies.py     DB session + admin auth dependencies
+    logging_config.py   Structured JSON logging setup
     redis_client.py     Async Redis singleton
     rate_limiter.py     Fixed-window rate limit middleware (Lua script)
     routers/
       public.py         /v1/* placeholder endpoints
-      admin.py          /admin/* CRUD endpoints
+      admin.py          /admin/* CRUD + stats endpoints
   alembic/
     versions/           Database migrations
   entrypoint.sh         Runs migrations then starts uvicorn
@@ -102,10 +137,11 @@ frontend/
   lib/
     api.js              Fetch wrapper with admin auth
   pages/
-    index.js            Redirects to /plans
+    index.js            Dashboard with stats cards
     plans.js            Plans management page
     api-keys.js         API keys management page
 docker-compose.yml
+.env.example
 ```
 
 ## Environment variables
@@ -115,13 +151,33 @@ docker-compose.yml
 | `DATABASE_URL` | `postgresql+psycopg://app:app@localhost:5432/ratelimiter` | Postgres connection string |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
 | `ADMIN_API_TOKEN` | `dev-admin-token` | Bearer token for admin endpoints |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Backend URL for frontend |
+| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed CORS origins |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8000` | Backend URL (baked in at build time) |
+| `NEXT_PUBLIC_ADMIN_TOKEN` | `dev-admin-token` | Admin token for frontend (baked in at build time) |
+
+## Running tests
+
+```bash
+# Start docker services first
+docker compose up -d postgres redis
+
+# Stop local postgres if it conflicts on port 5432
+brew services stop postgresql@14
+
+cd backend
+pip install -r requirements.txt
+pytest
+```
 
 ## Progress
 
 - [x] Step 1 — Monorepo + local infra (docker-compose)
 - [x] Step 2 — Backend skeleton (FastAPI + CORS + example endpoints)
 - [x] Step 3 — Postgres models + Alembic migrations
-- [x] Step 4 — Admin API (plans + API keys)
+- [x] Step 4 — Admin API (plans + API keys full CRUD)
 - [x] Step 5 — Rate limiter middleware (fixed window via Redis)
 - [x] Step 6 — Next.js admin dashboard UI
+- [x] Step 7 — DB indexes + admin auth hardening
+- [x] Step 8 — Structured JSON logging + observability stats
+- [x] Step 9 — Docker health checks, restart policies, multi-stage builds
+- [x] Step 10 — Pagination, Swagger docs, full README

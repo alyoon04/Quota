@@ -46,3 +46,9 @@ class ApiKeyResponse(BaseModel):
 
 class ApiKeyCreatedResponse(ApiKeyResponse):
     plaintext_key: str
+
+
+class StatsResponse(BaseModel):
+    total_plans: int
+    total_keys: int
+    requests_today: int

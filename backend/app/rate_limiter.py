@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import logging
 import time
 from datetime import datetime, timezone
 
@@ -10,6 +11,8 @@ from starlette.responses import JSONResponse
 from app.database import AsyncSessionLocal
 from app.models import ApiKey, Plan
 from app.redis_client import redis_client
+
+logger = logging.getLogger(__name__)
 
 # In-memory plan cache: {plan_id: (rpm, cached_at)}
 _plan_cache: dict[str, tuple[int, float]] = {}
@@ -78,6 +81,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         count = await redis_client.eval(RATE_LIMIT_SCRIPT, 1, redis_key, 60)
 
+        # Track daily request count
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        asyncio.create_task(redis_client.incr(f"stats:requests:{today}"))
+
         remaining = max(0, rpm - count)
         headers = {
             "X-RateLimit-Limit": str(rpm),
@@ -88,6 +95,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if count > rpm:
             retry_after = window_reset - int(now)
             headers["Retry-After"] = str(max(1, retry_after))
+            logger.warning(
+                "Rate limit exceeded",
+                extra={
+                    "key_id": api_key_id_str,
+                    "plan_id": plan_id_str,
+                    "path": request.url.path,
+                    "count": count,
+                    "limit": rpm,
+                },
+            )
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Rate limit exceeded"},
@@ -122,6 +139,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if count > ADMIN_RATE_LIMIT_RPM:
             retry_after = window_reset - int(now)
+            logger.warning(
+                "Admin rate limit exceeded",
+                extra={"client_ip": client_ip, "count": count},
+            )
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Admin rate limit exceeded"},

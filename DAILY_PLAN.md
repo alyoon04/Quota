@@ -105,40 +105,40 @@
 
 ---
 
-## Day 8: Logging + Basic Observability
+## Day 8: Logging + Basic Observability ✅
 **Goal**: Know what's happening in your app.
 
-- [ ] Add Python `logging` throughout backend (structured JSON logs)
-- [ ] Log every rate limit rejection (key, plan, endpoint)
-- [ ] Log admin actions (create/update/delete plan/key)
-- [ ] Add `GET /admin/stats` endpoint — total keys, total plans, requests today
-- [ ] Add a simple stats card to the dashboard home page
+- [x] Add Python `logging` throughout backend (structured JSON logs)
+- [x] Log every rate limit rejection (key, plan, endpoint)
+- [x] Log admin actions (create/update/delete plan/key)
+- [x] Add `GET /admin/stats` endpoint — total keys, total plans, requests today
+- [x] Add a simple stats card to the dashboard home page
 
 **Files**: `backend/app/main.py`, `backend/app/rate_limiter.py`, `backend/app/routers/admin.py`, `frontend/pages/index.js`
 
 ---
 
-## Day 9: Docker + Deployment Hardening
+## Day 9: Docker + Deployment Hardening ✅
 **Goal**: Make it ready to run outside localhost.
 
-- [ ] Add health checks to docker-compose for postgres, redis, backend
-- [ ] Add restart policies (`unless-stopped`)
-- [ ] Multi-stage Dockerfile builds (smaller images)
-- [ ] Make CORS origins configurable via env var
-- [ ] Add `.env.example` file documenting all env vars
+- [x] Add health checks to docker-compose for postgres, redis, backend
+- [x] Add restart policies (`unless-stopped`)
+- [x] Multi-stage Dockerfile builds (smaller images)
+- [x] Make CORS origins configurable via env var
+- [x] Add `.env.example` file documenting all env vars
 
 **Files**: `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `backend/app/main.py`, `.env.example`
 
 ---
 
-## Day 10: Documentation + Final Polish
+## Day 10: Documentation + Final Polish ✅
 **Goal**: Make it presentable and easy for someone else to use.
 
-- [ ] Update README with new endpoints and features
-- [ ] Add setup guide (local dev without Docker)
-- [ ] Enable FastAPI's built-in `/docs` (Swagger UI) for API exploration
-- [ ] Add pagination to list endpoints (plans + keys)
-- [ ] Final pass: remove TODOs, clean up dead code
+- [x] Update README with new endpoints and features
+- [x] Add setup guide (local dev without Docker)
+- [x] Enable FastAPI's built-in `/docs` (Swagger UI) for API exploration
+- [x] Add pagination to list endpoints (plans + keys)
+- [x] Final pass: remove TODOs, clean up dead code
 
 **Files**: `README.md`, `backend/app/main.py`, `backend/app/routers/admin.py`
 

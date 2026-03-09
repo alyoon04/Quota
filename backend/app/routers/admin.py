@@ -1,15 +1,17 @@
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_admin
 from app.models import ApiKey, Plan
+from app.redis_client import redis_client
 from app.schemas import (
     ApiKeyCreate,
     ApiKeyCreatedResponse,
@@ -18,9 +20,25 @@ from app.schemas import (
     PlanCreate,
     PlanResponse,
     PlanUpdate,
+    StatsResponse,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
+
+
+@router.get("/stats", response_model=StatsResponse)
+async def get_stats(db: AsyncSession = Depends(get_db)):
+    total_plans = (await db.execute(select(func.count(Plan.id)))).scalar() or 0
+    total_keys = (await db.execute(select(func.count(ApiKey.id)))).scalar() or 0
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    requests_today = int(await redis_client.get(f"stats:requests:{today}") or 0)
+    return StatsResponse(
+        total_plans=total_plans,
+        total_keys=total_keys,
+        requests_today=requests_today,
+    )
 
 
 @router.post("/plans", response_model=PlanResponse, status_code=201)
@@ -38,12 +56,17 @@ async def create_plan(body: PlanCreate, db: AsyncSession = Depends(get_db)):
         await db.rollback()
         raise HTTPException(status_code=409, detail="Plan name already exists")
     await db.refresh(plan)
+    logger.info("Plan created", extra={"plan_id": str(plan.id), "plan_name": plan.name})
     return plan
 
 
 @router.get("/plans", response_model=list[PlanResponse])
-async def list_plans(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Plan).order_by(Plan.created_at))
+async def list_plans(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Plan).order_by(Plan.created_at).offset(skip).limit(limit))
     plans = result.scalars().all()
     counts_result = await db.execute(
         select(ApiKey.plan_id, func.count(ApiKey.id).label("cnt")).group_by(ApiKey.plan_id)
@@ -84,6 +107,7 @@ async def update_plan(
         await db.rollback()
         raise HTTPException(status_code=409, detail="Plan name already exists")
     await db.refresh(plan)
+    logger.info("Plan updated", extra={"plan_id": str(plan_id)})
     return plan
 
 
@@ -92,7 +116,6 @@ async def delete_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     plan = await db.get(Plan, plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
-    # Reject if API keys still reference this plan
     result = await db.execute(
         select(ApiKey).where(ApiKey.plan_id == plan_id).limit(1)
     )
@@ -103,11 +126,11 @@ async def delete_plan(plan_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         )
     await db.delete(plan)
     await db.commit()
+    logger.info("Plan deleted", extra={"plan_id": str(plan_id)})
 
 
 @router.post("/api-keys", response_model=ApiKeyCreatedResponse, status_code=201)
 async def create_api_key(body: ApiKeyCreate, db: AsyncSession = Depends(get_db)):
-    # Verify plan exists
     plan = await db.get(Plan, body.plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
@@ -127,6 +150,10 @@ async def create_api_key(body: ApiKeyCreate, db: AsyncSession = Depends(get_db))
     await db.commit()
     await db.refresh(api_key)
 
+    logger.info(
+        "API key created",
+        extra={"key_id": str(api_key.id), "label": api_key.label, "plan_id": str(body.plan_id)},
+    )
     return ApiKeyCreatedResponse(
         id=api_key.id,
         label=api_key.label,
@@ -139,8 +166,12 @@ async def create_api_key(body: ApiKeyCreate, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/api-keys", response_model=list[ApiKeyResponse])
-async def list_api_keys(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ApiKey).order_by(ApiKey.created_at))
+async def list_api_keys(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(ApiKey).order_by(ApiKey.created_at).offset(skip).limit(limit))
     return result.scalars().all()
 
 
@@ -154,6 +185,10 @@ async def update_api_key(
     key.is_active = body.is_active
     await db.commit()
     await db.refresh(key)
+    logger.info(
+        "API key updated",
+        extra={"key_id": str(key_id), "is_active": body.is_active},
+    )
     return key
 
 
@@ -164,3 +199,4 @@ async def delete_api_key(key_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="API key not found")
     await db.delete(key)
     await db.commit()
+    logger.info("API key deleted", extra={"key_id": str(key_id)})

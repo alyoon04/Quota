@@ -2,7 +2,9 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
+from app.database import AsyncSessionLocal
 from app.main import app
 from app.rate_limiter import redis_client
 
@@ -13,6 +15,14 @@ ADMIN_TOKEN = "dev-admin-token"
 async def _warmup_redis():
     """Ping Redis once at session start so the connection pool binds to the session event loop."""
     await redis_client.ping()
+
+
+@pytest.fixture(autouse=True, scope="session")
+async def _clean_db():
+    """Truncate all tables before the test session to avoid cross-run pollution."""
+    async with AsyncSessionLocal() as session:
+        await session.execute(text("TRUNCATE api_keys, plans RESTART IDENTITY CASCADE"))
+        await session.commit()
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
@@ -9,32 +10,55 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d ratelimiter"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://app:app@postgres:5432/ratelimiter
       REDIS_URL: redis://redis:6379/0
       ADMIN_API_TOKEN: dev-admin-token
+      CORS_ORIGINS: http://localhost:3000
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_ADMIN_TOKEN: dev-admin-token
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
