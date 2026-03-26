@@ -8,8 +8,6 @@ from app.database import AsyncSessionLocal
 from app.main import app
 from app.rate_limiter import redis_client
 
-ADMIN_TOKEN = "dev-admin-token"
-
 
 @pytest.fixture(autouse=True, scope="session")
 async def _warmup_redis():
@@ -21,7 +19,9 @@ async def _warmup_redis():
 async def _clean_db():
     """Truncate all tables before the test session to avoid cross-run pollution."""
     async with AsyncSessionLocal() as session:
-        await session.execute(text("TRUNCATE api_keys, plans RESTART IDENTITY CASCADE"))
+        await session.execute(
+            text("TRUNCATE api_keys, plans, users RESTART IDENTITY CASCADE")
+        )
         await session.commit()
 
 
@@ -32,9 +32,28 @@ async def client():
         yield ac
 
 
+@pytest.fixture(scope="session")
+async def user_token():
+    """Register a test user once per session and return their JWT."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/auth/register",
+            json={"email": "testuser@example.com", "password": "testpassword123"},
+        )
+        assert resp.status_code == 201
+        return resp.json()["access_token"]
+
+
+@pytest.fixture(scope="session")
+def auth_headers(user_token):
+    return {"Authorization": f"Bearer {user_token}"}
+
+
+# Backward-compat alias used by older test files
 @pytest.fixture
-def admin_headers():
-    return {"Authorization": f"Bearer {ADMIN_TOKEN}"}
+def admin_headers(auth_headers):
+    return auth_headers
 
 
 @pytest.fixture

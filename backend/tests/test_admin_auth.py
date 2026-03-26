@@ -9,18 +9,18 @@ async def test_missing_auth_header_returns_403(client):
     assert resp.status_code == 403
 
 
-async def test_wrong_token_returns_403(client):
-    """Requests with an incorrect token should be rejected with 403."""
+async def test_invalid_jwt_returns_401(client):
+    """Requests with a malformed/wrong JWT should be rejected with 401."""
     resp = await client.get(
         "/admin/plans",
-        headers={"Authorization": "Bearer wrong-token"},
+        headers={"Authorization": "Bearer not-a-valid-jwt"},
     )
-    assert resp.status_code == 403
-    assert resp.json()["detail"] == "Invalid admin token"
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "Invalid or expired token"
 
 
 async def test_correct_token_is_accepted(client, admin_headers):
-    """Requests with the correct token should pass through (200)."""
+    """Requests with a valid JWT should pass through (200)."""
     resp = await client.get("/admin/plans", headers=admin_headers)
     assert resp.status_code == 200
 

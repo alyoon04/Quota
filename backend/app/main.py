@@ -8,6 +8,7 @@ from app.logging_config import setup_logging
 from app.rate_limiter import RateLimitMiddleware
 from app.redis_client import redis_client
 from app.routers import admin, public
+from app.routers.auth import router as auth_router
 
 setup_logging()
 
@@ -32,6 +33,7 @@ app.add_middleware(
 
 app.add_middleware(RateLimitMiddleware)
 
+app.include_router(auth_router)
 app.include_router(public.router)
 app.include_router(admin.router)
 

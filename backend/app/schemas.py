@@ -52,3 +52,13 @@ class StatsResponse(BaseModel):
     total_plans: int
     total_keys: int
     requests_today: int
+
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
